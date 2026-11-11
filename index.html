@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#C19A6B"><meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest"><title>EcoSaku</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--tan:#C19A6B;--esp:#4A3525;--cream:#FDFBF7;--g:#10B981;--r:#B5483A}
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.4 'DM Sans',sans-serif;background:var(--cream);color:var(--esp);padding:env(safe-area-inset-top) 0 96px}
+h2,.big{font-family:Fraunces,serif;font-weight:600}h2{font-size:22px;margin:18px 0 10px}h3{font-size:13px;margin:12px 0 4px;opacity:.7}
+#main{max-width:480px;margin:auto;padding:14px 16px}small{display:block;opacity:.7;font-size:12px}
+.card{background:#fff;border:1px solid #eadfce;border-radius:18px;padding:16px;margin:10px 0}
+.main{background:var(--tan);color:#fff;border:0;padding:26px 20px;box-shadow:0 14px 30px -12px rgba(74,53,37,.5)}
+.big{font-size:38px;margin-top:4px}.sm{width:40%;min-width:150px;background:var(--esp);color:var(--cream);border:0;padding:12px}.sm b{font-size:15px}
+.ban{background:#f6e3d6;border-left:4px solid var(--r);padding:10px 12px;border-radius:10px;font-size:13px}
+.row{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #eadfce;border-radius:12px;padding:11px 14px;margin:6px 0;transition:transform .2s}
+.in{color:var(--g)}.out{color:var(--r)}.mt{opacity:.7;margin:10px 0}
+input,select,button{font:inherit;color:inherit;width:100%;padding:12px;border-radius:12px;border:1px solid #d9c9b2;background:#fff;margin:5px 0}
+button{background:var(--esp);color:var(--cream);border:0;font-weight:700;cursor:pointer}button.ghost{background:#efe4d3;color:var(--esp)}
+.two{display:flex;gap:6px}.two>*{flex:1}.two button{flex:0 0 auto;width:auto}
+label{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0}label input{width:auto;flex:0 0 120px}label input[type=checkbox]{flex:0 0 22px;height:22px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--esp);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+nav button{background:none;color:#cdb79b;font-size:12px;margin:0;padding:10px 2px}nav button.on{color:#fff;background:#6a4d37}
+.fab{position:fixed;right:18px;bottom:calc(84px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--tan);font-size:28px;padding:0;box-shadow:0 8px 20px rgba(74,53,37,.4)}
+.wl{display:flex;overflow-x:auto;padding:8px 30px 8px 0}.wl .card{flex:0 0 68%;margin:0 -26px 0 0;background:var(--tan);color:#fff;min-height:120px;box-shadow:-6px 0 14px rgba(74,53,37,.25)}
+.bar{display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0}.bar span{flex:0 0 80px}.bar i{height:10px;background:var(--tan);border-radius:5px}
+.donut{width:150px;height:150px;border-radius:50%;margin:10px auto}
+#ov{position:fixed;inset:0;background:rgba(74,53,37,.35);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center;z-index:9}
+#ov.show{display:flex}#ov.mid{align-items:center}#ov>div{background:var(--cream);width:100%;max-width:480px;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}#ov.mid>div{border-radius:22px;margin:0 20px}
+#toast{position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--esp);color:#fff;padding:10px 16px;border-radius:20px;z-index:99;display:none;max-width:90%}
+body.auth nav,body.auth .fab{display:none}
+</style></head><body class="auth">
+<div id="main"></div><button class="fab" onclick="openTx()" aria-label="Catat transaksi">+</button>
+<nav><button data-p="home">Beranda</button><button data-p="wal">Dompet</button><button data-p="his">Riwayat</button><button data-p="sav">Tabungan</button><button data-p="setp">Atur</button></nav>
+<div id="ov" onclick="if(event.target==this)closeSheet()"><div></div></div><div id="toast"></div>
+<script>
+// ====== ISI DENGAN KUNCI SUPABASE ANDA (Project Settings > API) ======
+const SB_URL='', SB_KEY='';
+const sb=supabase.createClient(SB_URL||'https://example.supabase.co',SB_KEY||'anon');
+const $=s=>document.querySelector(s),rp=n=>(n<0?'-':'')+'Rp'+Math.abs(Math.round(n)).toLocaleString('id-ID');
+let S={w:[],c:[],t:[],g:[],email:''},page='home',hm='all',ht='all';
+let cfg=JSON.parse(localStorage.getItem('cfg')||'{"chart":false,"notif":true,"day":0,"week":0}');
+const save=()=>localStorage.setItem('cfg',JSON.stringify(cfg));
+const msg=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',3500)};
+const sheet=(h,mid)=>{$('#ov').className='show'+(mid?' mid':'');$('#ov>div').innerHTML=h};
+const closeSheet=()=>$('#ov').className='';
+const cn=id=>(S.c.find(c=>c.id==id)||{}).name||'-';
+const dep=t=>(S.c.find(c=>c.id==t.category_id)||{}).is_deposit;
+const bal=id=>{const w=S.w.find(x=>x.id==id);return +w.initial+S.t.filter(t=>t.wallet_id==id).reduce((a,t)=>a+(t.type=='in'?1:-1)*t.amount,0)};
+function calc(){let i=0,o=0;S.t.forEach(t=>{if(dep(t))return;t.type=='in'?i+=+t.amount:o+=+t.amount});
+ const lock=S.g.reduce((a,g)=>a+ +g.locked,0),total=S.w.reduce((a,w)=>a+ +w.initial,0)+i-o;return{total,lock,ready:total-lock}}
+const weekSum=()=>S.t.filter(t=>t.type=='out'&&!dep(t)&&Date.now()-new Date(t.created_at)<6048e5).reduce((a,t)=>a+ +t.amount,0);
+
+// ===== Auth =====
+function authView(){$('#main').innerHTML=`<h2 style="font-size:34px;margin-top:60px">EcoSaku</h2><p class=mt>Catat uang saku, pisahkan dana terkunci, dan pantau saldo siap pakai.</p>
+${SB_URL?'':'<div class=ban>Isi SB_URL dan SB_KEY di index.html agar login berfungsi.</div>'}
+<input id=em type=email placeholder="Email" autocomplete=email><input id=pw type=password placeholder="Password" autocomplete=current-password>
+<button onclick="auth('in')">Masuk</button><button class=ghost onclick="auth('up')">Daftar akun baru</button>
+<button class=ghost onclick="sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin}})">Lanjut dengan Google</button>
+<button class=ghost onclick="forgot()">Lupa password</button>`}
+async function auth(m){const e=$('#em').value,p=$('#pw').value;
+ const r=m=='up'?await sb.auth.signUp({email:e,password:p}):await sb.auth.signInWithPassword({email:e,password:p});
+ if(r.error)return msg(r.error.message);if(m=='up'&&!r.data.session)msg('Cek email untuk verifikasi akun.')}
+async function forgot(){const e=$('#em').value;if(!e)return msg('Isi email dulu.');const r=await sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin});msg(r.error?r.error.message:'Tautan reset dikirim ke email.')}
+async function chpw(){const p=prompt('Password baru (min. 6 karakter)');if(!p)return;const r=await sb.auth.updateUser({password:p});msg(r.error?r.error.message:'Password diperbarui.')}
+sb.auth.onAuthStateChange((ev,s)=>{if(ev=='PASSWORD_RECOVERY')setTimeout(chpw,400);
+ if(s){S.email=s.user.email;document.body.className='';if(ev!='TOKEN_REFRESHED')load()}else{document.body.className='auth';authView()}});
+
+// ===== Data =====
+async function load(){const r=await Promise.all(['wallets','categories','transactions','goals'].map(n=>sb.from(n).select('*').order('created_at')));
+ [S.w,S.c,S.t,S.g]=r.map(x=>x.data||[]);
+ if(!S.w.length&&!S.c.length){await sb.from('wallets').insert(['Cash','GoPay','Bank BSI'].map(name=>({name})));
+  await sb.from('categories').insert([...['Beasiswa','Kiriman ortu','Bisnis'].map(name=>({name,type:'in'})),...['Makan','Transportasi','UKT','Kos'].map(name=>({name,type:'out'}))]);return load()}
+ const today=new Date().toISOString().slice(0,10);
+ for(const g of S.g)if(+g.daily>0&&g.last_alloc<today){const d=Math.round((new Date(today)-new Date(g.last_alloc))/864e5);g.locked=+g.locked+d*g.daily;g.last_alloc=today;await sb.from('goals').update({locked:g.locked,last_alloc:today}).eq('id',g.id)}
+ render()}
+
+// ===== Halaman =====
+const list=a=>a.length?a.map(t=>`<div class=row data-id=${t.id}><span>${cn(t.category_id)}<small>${t.note||''}</small></span><b class=${t.type}>${t.type=='in'?'+':'−'}${rp(t.amount)}</b></div>`).join(''):'<p class=mt>Belum ada transaksi. Ketuk + untuk mencatat.</p>';
+function charts(){const m={};S.t.filter(t=>t.type=='out'&&!dep(t)).forEach(t=>m[cn(t.category_id)]=(m[cn(t.category_id)]||0)+ +t.amount);
+ const mx=Math.max(1,...Object.values(m)),bars=Object.entries(m).map(([k,v])=>`<div class=bar><span>${k}</span><i style="width:${v/mx*100}%"></i></div>`).join('')||'<p class=mt>Belum ada pengeluaran.</p>';
+ const days=[...Array(7)].map((_,i)=>{const d=new Date(Date.now()-(6-i)*864e5).toISOString().slice(0,10);return S.t.filter(t=>t.type=='out'&&t.created_at.slice(0,10)==d).reduce((a,t)=>a+ +t.amount,0)}),M=Math.max(1,...days);
+ const pts=days.map((v,i)=>`${i*50+5},${55-v/M*50}`).join(' ');
+ return`<div class=card><b>Pengeluaran per kategori</b>${bars}</div><div class=card><b>Tren pengeluaran 7 hari</b><svg viewBox="0 0 310 60"><polyline points="${pts}" fill=none stroke="${days[6]>days[0]?'var(--r)':'var(--g)'}" stroke-width=3 stroke-linecap=round /></svg></div>`}
+function home(){const c=calc(),last=[...S.t].reverse().slice(0,3);
+ return(c.ready<50000?`<div class=ban>Saldo siap pakai tinggal ${rp(c.ready)}. Kurangi pengeluaran.</div>`:'')+
+ `<div class="card main"><small>Saldo siap pakai</small><div class=big>${rp(c.ready)}</div></div><div class="card sm"><small>Saldo keseluruhan</small><b>${rp(c.total)}</b></div>`+(cfg.chart?charts():'')+'<h2>Transaksi terakhir</h2>'+list(last)}
+function wal(){const tot=S.w.reduce((a,w)=>a+bal(w.id),0);
+ return`<h2>Tempat penyimpanan</h2><small>Total aset</small><div class=big>${rp(tot)}</div><div class=wl>${S.w.map(w=>`<div class=card><b>${w.name}</b><div class=big style="font-size:24px">${rp(bal(w.id))}</div></div>`).join('')}</div><button class=ghost onclick=addW()>Tambah tempat penyimpanan</button>`}
+async function addW(){const name=prompt('Nama tempat penyimpanan');if(!name)return;await sb.from('wallets').insert({name,initial:+prompt('Saldo awal (Rp)','0')||0});load()}
+function his(){const ms=[...new Set(S.t.map(t=>t.created_at.slice(0,7)))].sort().reverse(),g={};
+ S.t.filter(t=>(hm=='all'||t.created_at.slice(0,7)==hm)&&(ht=='all'||t.type==ht)).reverse().forEach(t=>(g[t.created_at.slice(0,10)]??=[]).push(t));
+ return`<h2>Riwayat</h2><div class=two><select onchange="hm=this.value;render()"><option value=all>Semua bulan${ms.map(m=>`<option ${m==hm?'selected':''}>${m}`).join('')}</select><select onchange="ht=this.value;render()"><option value=all>Semua jenis<option value=in ${ht=='in'?'selected':''}>Pemasukan<option value=out ${ht=='out'?'selected':''}>Pengeluaran</select></div><small>Geser baris ke kiri untuk menghapus</small>`+(Object.entries(g).map(([d,a])=>`<h3>${d}</h3>${list(a)}`).join('')||list([]))}
+function sav(){const c=calc(),p=c.total>0?Math.min(100,c.lock/c.total*100):0;
+ return`<h2>Tabungan & cicilan</h2><div class=donut style="background:conic-gradient(var(--esp) 0 ${p}%,var(--tan) 0)"></div><p style="text-align:center">Terkunci ${rp(c.lock)} · Bebas ${rp(c.ready)}</p>`+
+ (S.g.map(g=>`<div class=card><b>${g.name}</b><div class=big style="font-size:24px">${rp(g.locked)}</div><small>${+g.daily?rp(g.daily)+' per hari':'Alokasi manual'}</small><div class=two><button class=ghost onclick="pull('${g.id}')">Tarik saldo</button><button class=ghost onclick="cancel('${g.id}')">Batalkan target</button></div></div>`).join('')||'<p class=mt>Belum ada target.</p>')+`<button onclick=addGoal()>Tambah target</button>`}
+async function addGoal(){const name=prompt('Nama target (tabungan, cicilan, self-reward)');if(!name)return;const daily=+prompt('Sisihkan per hari (Rp, 0 jika manual)','1000')||0,lock=+prompt('Setoran awal (Rp)','0')||0;
+ if(lock>calc().ready)return msg('Saldo siap pakai tidak cukup.');await sb.from('goals').insert({name,daily,locked:lock});load()}
+async function pull(id){const g=S.g.find(x=>x.id==id),n=+prompt('Tarik berapa? Maks '+rp(g.locked),g.locked);if(!(n>0)||n>g.locked)return;await sb.from('goals').update({locked:g.locked-n}).eq('id',id);load()}
+async function cancel(id){if(confirm('Batalkan target? Dana kembali ke saldo siap pakai.')){await sb.from('goals').delete().eq('id',id);load()}}
+function setp(){return`<h2>Pengaturan</h2><div class=card><label>Grafik di beranda<input type=checkbox ${cfg.chart?'checked':''} onchange="cfg.chart=this.checked;save()"></label><label>Notifikasi<input type=checkbox ${cfg.notif?'checked':''} onchange="cfg.notif=this.checked;save()"></label><label>Limit per transaksi (Rp)<input type=number value="${cfg.day||''}" onchange="cfg.day=+this.value;save()"></label><label>Anggaran mingguan (Rp)<input type=number value="${cfg.week||''}" onchange="cfg.week=+this.value;save()"></label></div><div class=card><small>${S.email}</small><button class=ghost onclick=chpw()>Ganti password</button><button onclick="sb.auth.signOut()">Keluar</button></div>`}
+const P={home,wal,his,sav,setp};
+function render(){$('#main').innerHTML=P[page]();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p==page))}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{page=b.dataset.p;render()});
+
+// ===== Transaksi & kategori =====
+function openTx(){sheet(`<h2>Catat transaksi</h2><select id=ft onchange=fillCat()><option value=out>Pengeluaran<option value=in>Pemasukan</select><input id=fa type=number inputmode=numeric placeholder="Nominal (Rp)"><select id=fw>${S.w.map(w=>`<option value=${w.id}>${w.name}`).join('')}</select><div class=two><select id=fc></select><button class=ghost onclick=addCat()>+</button><button class=ghost onclick=delCat()>Hapus</button></div><input id=fn placeholder="Catatan (opsional)"><button onclick=addTx()>Simpan</button>`);fillCat()}
+const fillCat=()=>$('#fc').innerHTML=S.c.filter(c=>c.type==$('#ft').value).map(c=>`<option value=${c.id}>${c.name}${c.is_deposit?' (titipan)':''}`).join('');
+async function addCat(){const name=prompt('Nama kategori baru');if(!name)return;await sb.from('categories').insert({name,type:$('#ft').value,is_deposit:confirm('Tandai sebagai uang titipan? (tidak dihitung ke kekayaan pribadi)')});await load();openTx()}
+async function delCat(){const id=$('#fc').value;if(!id)return;const ws=new Set(S.t.filter(t=>t.category_id==id).map(t=>t.wallet_id));
+ if([...ws].some(w=>bal(w)>0))return msg('Dibatalkan: saldo tempat penyimpanan terkait belum kosong.');
+ const keep=new Set(S.t.filter(t=>t.category_id!=id).map(t=>t.wallet_id)),rm=[...ws].filter(w=>!keep.has(w));
+ await sb.from('categories').delete().eq('id',id);if(rm.length)await sb.from('wallets').delete().in('id',rm);await load();openTx()}
+async function addTx(){const a=+$('#fa').value,type=$('#ft').value;if(!(a>0)||!$('#fc').value)return msg('Isi nominal dan kategori.');
+ const{error}=await sb.from('transactions').insert({type,amount:a,wallet_id:$('#fw').value,category_id:$('#fc').value,note:$('#fn').value});
+ if(error)return msg(error.message);closeSheet();await load();
+ if(type=='out'&&cfg.notif){const w=weekSum();
+  if(cfg.day&&a>cfg.day)alertM(`Transaksi ${rp(a)} melewati limit harian ${rp(cfg.day)}.`);
+  else if(cfg.week&&w>cfg.week)alertM(`Pengeluaran minggu ini ${rp(w)} melewati anggaran ${rp(cfg.week)}.`)}}
+const alertM=t=>sheet(`<h2>Peringatan pengeluaran</h2><p>${t}</p><button onclick=closeSheet()>Mengerti</button>`,1);
+let sx;document.addEventListener('touchstart',e=>sx=e.touches[0].clientX);
+document.addEventListener('touchend',async e=>{const r=e.target.closest('.row');
+ if(r&&sx-e.changedTouches[0].clientX>90&&confirm('Hapus transaksi ini?')){await sb.from('transactions').delete().eq('id',r.dataset.id);load()}});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
